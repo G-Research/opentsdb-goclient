@@ -75,6 +75,8 @@ const (
 	UIDAssignPath      = "/api/uid/assign"
 	TSMetaDataPath     = "/api/uid/tsmeta"
 
+	SearchUIDMetaPath = "/api/search/uidmeta"
+
 	// The above three constants are used in /put
 	DefaultMaxPutPointsNum = 75
 	DefaultDetectDeltaNum  = 3
@@ -391,6 +393,8 @@ type Client interface {
 	//
 	// Note that: the returned non-nil error instance is only responsed by opentsdb-client, not the OpenTSDB backend.
 	DeleteTSMetaData(tsMetaData TSMetaData) (*TSMetaDataResponse, error)
+
+	SearchUIDMeataData(query string) (*UIDMetaDataSearchResults, error)
 }
 
 // NewClient creates an instance of http client which implements the
