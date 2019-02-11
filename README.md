@@ -40,3 +40,8 @@ GET,POST,DELETE /api/uid/tsmeta
 GET,POST,DELETE /api/uid/uidmeta
 GET 			/api/version
 ```
+
+### TODO 
+ [ ] /api/search/lookup
+ [ ] /api/search/tsuid
+ [ ] /api/search/uidmeta

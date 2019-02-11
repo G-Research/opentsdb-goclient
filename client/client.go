@@ -65,15 +65,20 @@ const (
 	TypeTagk    = "tagk"
 	TypeTagv    = "tagv"
 
-	VersionPath        = "/api/version"
-	DropcachesPath     = "/api/dropcaches"
-	AnnotationPath     = "/api/annotation"
-	AnQueryStartTime   = "start_time"
-	AnQueryTSUid       = "tsuid"
-	BulkAnnotationPath = "/api/annotation/bulk"
-	UIDMetaDataPath    = "/api/uid/uidmeta"
-	UIDAssignPath      = "/api/uid/assign"
-	TSMetaDataPath     = "/api/uid/tsmeta"
+	VersionPath         = "/api/version"
+	DropcachesPath      = "/api/dropcaches"
+	AnnotationPath      = "/api/annotation"
+	AnQueryStartTime    = "start_time"
+	AnQueryTSUid        = "tsuid"
+	BulkAnnotationPath  = "/api/annotation/bulk"
+	UIDMetaDataPath     = "/api/uid/uidmeta"
+	UIDAssignPath       = "/api/uid/assign"
+	TSMetaDataPath      = "/api/uid/tsmeta"
+	SearchPath          = "/api/search"
+	TSMetaSearchPath    = "/api/search/tsmeta"
+	UIDMetaSearchPath   = "/api/search/uidmeta"
+	TSUIDMetaSearchPath = "/api/search/tsuids"
+	TSMetaDataLookup    = "/api/search/lookup"
 
 	// The above three constants are used in /put
 	DefaultMaxPutPointsNum = 75
@@ -391,6 +396,11 @@ type Client interface {
 	//
 	// Note that: the returned non-nil error instance is only responsed by opentsdb-client, not the OpenTSDB backend.
 	DeleteTSMetaData(tsMetaData TSMetaData) (*TSMetaDataResponse, error)
+	TSMetaDataLookup(
+		searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataLookupResponse, error)
+
+	SearchTSMetaData(
+		searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataSearchResponse, error)
 }
 
 // NewClient creates an instance of http client which implements the
@@ -439,7 +449,7 @@ type clientImpl struct {
 // Currently it is an abstraction used in (*clientImpl).sendRequest()
 // to stored the different kinds of response contents for all the rest-apis.
 type Response interface {
-
+	///
 	// SetStatus can be used to set the actual http status code of
 	// the related http response for the specific Response instance
 	SetStatus(code int)
