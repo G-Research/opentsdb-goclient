@@ -259,11 +259,11 @@ type TSMetaData struct {
 
 	// An optional maximum value for this timeseries that may be used in calculations such as
 	// percent of maximum. If the default of NaN is present, the value is ignored.
-	Max float64 `json:"max,omitempty"`
+	//Max float64 `json:"max,omitempty"`
 
 	// An optional minimum value for this timeseries that may be used in calculations such as
 	// percent of minimum. If the default of NaN is present, the value is ignored.
-	Min float64 `json:"min,omitempty"`
+	//Min float64 `json:"min,omitempty"`
 }
 
 type TSMetaDataResponse struct {

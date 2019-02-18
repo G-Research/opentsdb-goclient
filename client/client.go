@@ -28,6 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -65,20 +66,20 @@ const (
 	TypeTagk    = "tagk"
 	TypeTagv    = "tagv"
 
-	VersionPath         = "/api/version"
-	DropcachesPath      = "/api/dropcaches"
-	AnnotationPath      = "/api/annotation"
-	AnQueryStartTime    = "start_time"
-	AnQueryTSUid        = "tsuid"
-	BulkAnnotationPath  = "/api/annotation/bulk"
-	UIDMetaDataPath     = "/api/uid/uidmeta"
-	UIDAssignPath       = "/api/uid/assign"
-	TSMetaDataPath      = "/api/uid/tsmeta"
-	SearchPath          = "/api/search"
-	TSMetaSearchPath    = "/api/search/tsmeta"
-	UIDMetaSearchPath   = "/api/search/uidmeta"
-	TSUIDMetaSearchPath = "/api/search/tsuids"
-	TSMetaDataLookup    = "/api/search/lookup"
+	VersionPath        = "/api/version"
+	DropcachesPath     = "/api/dropcaches"
+	AnnotationPath     = "/api/annotation"
+	AnQueryStartTime   = "start_time"
+	AnQueryTSUid       = "tsuid"
+	BulkAnnotationPath = "/api/annotation/bulk"
+	UIDMetaDataPath    = "/api/uid/uidmeta"
+	UIDAssignPath      = "/api/uid/assign"
+	TSMetaDataPath     = "/api/uid/tsmeta"
+	SearchPath         = "/api/search"
+	TSMetaSearchPath   = "/api/search/tsmeta"
+	UIDMetaSearchPath  = "/api/search/uidmeta"
+	TSUIDSearchPath    = "/api/search/tsuids"
+	TSMetaDataLookup   = "/api/search/lookup"
 
 	// The above three constants are used in /put
 	DefaultMaxPutPointsNum = 75
@@ -395,12 +396,14 @@ type Client interface {
 	// or OpenTSDB is un-connectable right now.
 	//
 	// Note that: the returned non-nil error instance is only responsed by opentsdb-client, not the OpenTSDB backend.
-	DeleteTSMetaData(tsMetaData TSMetaData) (*TSMetaDataResponse, error)
-	TSMetaDataLookup(
-		searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataLookupResponse, error)
 
-	SearchTSMetaData(
-		searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataSearchResponse, error)
+	DeleteTSMetaData(tsMetaData TSMetaData) (*TSMetaDataResponse, error)
+
+	TSMetaDataLookup(searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataLookupResponse, error)
+
+	SearchTSMetaData(searchRequest TSMetaDataSearchRequestParams) (*TSMetaDataSearchResponse, error)
+
+	SearchTSUID(searchRequest TSMetaDataSearchRequestParams) (*TSUIDSearchResponse, error)
 }
 
 // NewClient creates an instance of http client which implements the
@@ -485,6 +488,7 @@ func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Resp
 		return errors.New(fmt.Sprintf("Failed to read response for %s %s: %v", method, url, err))
 	}
 
+	log.Print(string(jsonBytes))
 	parsedResp.SetStatus(resp.StatusCode)
 	parser := parsedResp.GetCustomParser()
 	if parser == nil {

@@ -15,16 +15,21 @@ type TSMetaDataSearchRequestParams struct {
 	Tags       []TagKeyValue
 }
 
+type SearchResponseCommons struct {
+	StatusCode   int
+	Type         string  `json:"type"`
+	Query        string  `json:"query"`
+	Limit        int64   `json:"limit"`
+	StartIndex   int64   `json:"startIndex"`
+	Metric       string  `json:"metric"`
+	Time         float64 `json:"time"`
+	TotalResults int64   `json:"totalResults,omitempty"`
+}
+
 type TSMetaDataLookupResponse struct {
-	StatusCode int
-	Type       string            `json:"type"`
-	Query      string            `json:"query"`
-	Limit      int64             `json:"limit"`
-	StartIndex int64             `json:"startIndex"`
-	Metric     string            `json:"metric"`
-	Time       float64           `json:"time"`
-	Tags       []TagKeyValue     `json:"tags"`
-	Results    []TerseTSMetaData `json:"results"`
+	SearchResponseCommons
+	Tags    []TagKeyValue     `json:"tags"`
+	Results []TerseTSMetaData `json:"results"`
 }
 
 func (r *TSMetaDataLookupResponse) SetStatus(code int) {
@@ -78,15 +83,19 @@ func (c *clientImpl) TSMetaDataLookup(
 }
 
 type TSMetaDataSearchResponse struct {
-	StatusCode int
-	Type       string        `json:"type"`
-	Query      string        `json:"query"`
-	Limit      int64         `json:"limit"`
-	StartIndex int64         `json:"startIndex"`
-	Metric     string        `json:"metric"`
-	Time       float64       `json:"time"`
-	Tags       []TagKeyValue `json:"tags"`
-	Results    []TSMetaData  `json:"results"`
+	SearchResponseCommons
+	Results []VerboseTSMetaData `json:"results,omitempty"`
+}
+
+type VerboseTSMetaData struct {
+	TSMetaData
+	Custom          map[string]string `json:"custom,omitempty"`
+	Units           string            `json:"units,omitempty"`
+	Metric          UIDMetaData       `json:"metric,omitempty"`
+	Tags            []UIDMetaData     `json:"tags,omitempty"`
+	Created         int64             `json:"created,omitempty"`
+	LastReceived    int64             `json:"lastReceived,omitempty"`
+	TotalDatapoints int64             `json:"totalDatapoints,omitempty"`
 }
 
 func (r *TSMetaDataSearchResponse) SetStatus(code int) {
@@ -116,10 +125,7 @@ func (c *clientImpl) SearchTSMetaData(
 	if err != nil {
 		return nil, err
 	}
-	log.Print(string(body))
-
 	searchTSMetaEndpoint := fmt.Sprintf("%s%s", c.tsdbEndpoint, TSMetaSearchPath)
-	log.Print(searchTSMetaEndpoint)
 	tsMetadDataSearchResp := TSMetaDataSearchResponse{}
 	if err := c.sendRequest(PostMethod,
 		searchTSMetaEndpoint,
@@ -128,4 +134,90 @@ func (c *clientImpl) SearchTSMetaData(
 		return nil, err
 	}
 	return &tsMetadDataSearchResp, nil
+}
+
+type TSUIDSearchResponse struct {
+	SearchResponseCommons
+	Results []string `json:"results,omitempty"`
+}
+
+func (r *TSUIDSearchResponse) SetStatus(code int) {
+	r.StatusCode = code
+}
+
+func (r *TSUIDSearchResponse) GetCustomParser() func([]byte) error {
+	return nil
+}
+
+func (r *TSUIDSearchResponse) String() string {
+	content, _ := json.Marshal(r)
+	return string(content)
+}
+
+func (c *clientImpl) SearchTSUID(
+	searchRequest TSMetaDataSearchRequestParams) (*TSUIDSearchResponse, error) {
+	body, err := json.Marshal(struct {
+		Query      string `json:"query"`
+		Limit      int64  `json:"limit"`
+		StartIndex int64  `json:"startIndex"`
+	}{
+		Query:      searchRequest.Query,
+		Limit:      searchRequest.Limit,
+		StartIndex: searchRequest.StartIndex,
+	})
+	if err != nil {
+		return nil, err
+	}
+	searchTSMetaEndpoint := fmt.Sprintf("%s%s", c.tsdbEndpoint, TSUIDSearchPath)
+	resp := TSUIDSearchResponse{}
+	if err := c.sendRequest(PostMethod,
+		searchTSMetaEndpoint,
+		string(body),
+		&resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+type UIDMetaSearchResponse struct {
+	SearchResponseCommons
+	Results []UIDMetaData `json:"results,omitempty"`
+}
+
+func (r *UIDMetaSearchResponse) SetStatus(code int) {
+	r.StatusCode = code
+}
+
+func (r *UIDMetaSearchResponse) GetCustomParser() func([]byte) error {
+	return nil
+}
+
+func (r *UIDMetaSearchResponse) String() string {
+	content, _ := json.Marshal(r)
+	return string(content)
+}
+
+func (c *clientImpl) SearchUIDMeta(
+	searchRequest TSMetaDataSearchRequestParams) (*TSUIDSearchResponse, error) {
+	body, err := json.Marshal(struct {
+		Query      string `json:"query"`
+		Limit      int64  `json:"limit"`
+		StartIndex int64  `json:"startIndex"`
+	}{
+		Query:      searchRequest.Query,
+		Limit:      searchRequest.Limit,
+		StartIndex: searchRequest.StartIndex,
+	})
+	if err != nil {
+		return nil, err
+	}
+	searchTSMetaEndpoint := fmt.Sprintf("%s%s", c.tsdbEndpoint, TSUIDSearchPath)
+	resp := TSUIDSearchResponse{}
+	if err := c.sendRequest(PostMethod,
+		searchTSMetaEndpoint,
+		string(body),
+		&resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }

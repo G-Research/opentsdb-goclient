@@ -14,7 +14,7 @@ func TestTSMetaDataLookup(t *testing.T) {
 	}
 	rsp, err := client.TSMetaDataLookup(TSMetaDataSearchRequestParams{
 		Metric: "*",
-		Tags:   []TagKeyValue{{Key: "type", Value: "tcp"}},
+		Tags:   []TagKeyValue{{Key: "*", Value: "tcp"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -31,12 +31,30 @@ func TestSearchTSMetaData(t *testing.T) {
 		t.Fatal(err)
 	}
 	rsp, err := client.SearchTSMetaData(TSMetaDataSearchRequestParams{
-		Query: "tsuid:*",
+		Query: "tsuid:/.*/",
 		//		Tags:  []TagKeyValue{{Key: "type", Value: "tcp"}},
 		Limit: 100,
 	})
 	if err != nil {
-		//t.Fatal(err)
+		//t.Fatal(err)N
+	}
+	for _, v := range rsp.Results {
+		fmt.Println(v)
+	}
+	t.Fail()
+}
+func TestSearchTSUID(t *testing.T) {
+	client, err := NewClient(config.OpenTSDBConfig{OpentsdbHost: "ec2-3-88-64-48.compute-1.amazonaws.com:4242"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsp, err := client.SearchTSUID(TSMetaDataSearchRequestParams{
+		Query: "tsuid:/.*/",
+		//		Tags:  []TagKeyValue{{Key: "type", Value: "tcp"}},
+		Limit: 100,
+	})
+	if err != nil {
+		//t.Fatal(err)N
 	}
 	for _, v := range rsp.Results {
 		fmt.Println(v)
