@@ -485,7 +485,6 @@ type Response interface {
 // ResponseStream represents a streaming response.
 // TODO: Implement Response in terms of this instead?
 type ResponseStream interface {
-
 	Response
 
 	// HandleBody is given the response.Body. It must call Close on the ReadCloser

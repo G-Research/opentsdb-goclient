@@ -283,7 +283,7 @@ func (c *clientImpl) Query(param QueryParam) (*QueryResponse, error) {
 	return &queryResp, nil
 }
 
-func (c *clientImpl) QueryStream(param QueryParam, outCh chan<- *QueryRespItem) error  {
+func (c *clientImpl) QueryStream(param QueryParam, outCh chan<- *QueryRespItem) error {
 	queryEndpoint := fmt.Sprintf("%s%s", c.tsdbEndpoint, QueryPath)
 	reqBodyCnt, err := prepQuery(param)
 	if err != nil {
@@ -298,7 +298,7 @@ func (c *clientImpl) QueryStream(param QueryParam, outCh chan<- *QueryRespItem) 
 }
 
 type QueryStreamResponse struct {
-	outCh chan<- *QueryRespItem
+	outCh      chan<- *QueryRespItem
 	statusCode int
 }
 
