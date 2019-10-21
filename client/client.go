@@ -130,6 +130,11 @@ type Client interface {
 	// is invalid, it failed to parese the response, or OpenTSDB is un-connectable right now.
 	Query(param QueryParam) (*QueryResponse, error)
 
+	// QueryStream is the streaming implementation of 'GET /api/query'.
+	// It will return results over the channel, as they are parsed, resulting in
+	// more predictable memory usage.
+	QueryStream(param QueryParam, outCh chan<- *QueryRespItem) error
+
 	// QueryLast is the implementation of 'GET /api/query/last' endpoint.
 	// It is introduced firstly in v2.1, and fully supported in v2.2. So it should be aware that this api works
 	// well since v2.2 of opentsdb.
