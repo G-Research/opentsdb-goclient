@@ -312,17 +312,8 @@ type QueryStreamResponse struct {
 	statusCode int
 }
 
-func (qs *QueryStreamResponse) GetCustomParser() func(respCnt []byte) error {
-	// unused by ResponseStream
-	return nil
-}
-
 func (qs *QueryStreamResponse) SetStatus(code int) {
 	qs.statusCode = code
-}
-
-func (qs *QueryStreamResponse) String() string {
-	return "[unused]"
 }
 
 func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {

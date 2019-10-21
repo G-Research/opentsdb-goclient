@@ -462,14 +462,12 @@ type clientImpl struct {
 }
 
 // Response defines the common behaviours all the specific response for
-// different rest-apis shound obey.
+// different rest-apis shound obey. For lower level access ResponseStream is
+// available which makes the body directly available.
 // Currently it is an abstraction used in (*clientImpl).sendRequest()
 // to stored the different kinds of response contents for all the rest-apis.
 type Response interface {
-
-	// SetStatus can be used to set the actual http status code of
-	// the related http response for the specific Response instance
-	SetStatus(code int)
+	ResponseBase
 
 	// GetCustomParser can be used to retrive a custom-defined parser.
 	// Returning nil means current specific Response instance doesn't
@@ -482,10 +480,15 @@ type Response interface {
 	String() string
 }
 
+type ResponseBase interface {
+	// SetStatus can be used to set the actual http status code of
+	// the related http response for the specific Response instance
+	SetStatus(code int)
+}
+
 // ResponseStream represents a streaming response.
-// TODO: Implement Response in terms of this instead?
 type ResponseStream interface {
-	Response
+	ResponseBase
 
 	// HandleBody is given the response.Body. It must call Close on the ReadCloser
 	// when finished (which can be after the method returns).
@@ -505,7 +508,7 @@ func (c *clientImpl) WithContext(ctx context.Context) Client {
 // reqBodyCnt is "" means there is no contents in the request body.
 // If the tsdb server responses properly, the error is nil and parsedResp is the parsed
 // response with the specific type. Otherwise, the returned error is not nil.
-func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Response) error {
+func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp ResponseBase) error {
 	req, err := http.NewRequest(method, url, strings.NewReader(reqBodyCnt))
 	if c.ctx != nil {
 		req = req.WithContext(c.ctx)
@@ -521,19 +524,27 @@ func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Resp
 
 	parsedResp.SetStatus(resp.StatusCode)
 
-	if respStream, ok := parsedResp.(ResponseStream); ok {
-		return respStream.HandleBody(resp.Body)
+	switch r := parsedResp.(type) {
+	case ResponseStream:
+		return r.HandleBody(resp.Body)
+	case Response:
+		return HandleResponseBody(r, method, url, resp.Body)
+	default:
+		return fmt.Errorf("Unhandled type: %T",  r)
 	}
+}
 
-	defer resp.Body.Close()
+func HandleResponseBody(r Response, method, url string, body io.ReadCloser) error {
+	defer body.Close()
+	var err error
 	var jsonBytes []byte
-	if jsonBytes, err = ioutil.ReadAll(resp.Body); err != nil {
+	if jsonBytes, err = ioutil.ReadAll(body); err != nil {
 		return errors.New(fmt.Sprintf("Failed to read response for %s %s: %v", method, url, err))
 	}
 
-	parser := parsedResp.GetCustomParser()
+	parser := r.GetCustomParser()
 	if parser == nil {
-		if err = json.Unmarshal(jsonBytes, parsedResp); err != nil {
+		if err = json.Unmarshal(jsonBytes, r); err != nil {
 			return errors.New(fmt.Sprintf("Failed to parse response for %s %s: %v", method, url, err))
 		}
 	} else {
