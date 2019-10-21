@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -476,6 +477,17 @@ type Response interface {
 	String() string
 }
 
+// ResponseStream represents a streaming response.
+// TODO: Implement Response in terms of this instead?
+type ResponseStream interface {
+
+	Response
+
+	// HandleBody is given the response.Body. It must call Close on the Reader
+	// when finished (which can be after the method returns).
+	HandleBody(io.Reader) error
+}
+
 func (c *clientImpl) WithContext(ctx context.Context) Client {
 	return &clientImpl{
 		tsdbEndpoint: c.tsdbEndpoint,
@@ -491,9 +503,9 @@ func (c *clientImpl) WithContext(ctx context.Context) Client {
 // response with the specific type. Otherwise, the returned error is not nil.
 func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Response) error {
 	req, err := http.NewRequest(method, url, strings.NewReader(reqBodyCnt))
-        if c.ctx != nil {
-          req = req.WithContext(c.ctx)
-        }
+	if c.ctx != nil {
+		req = req.WithContext(c.ctx)
+	}
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to create request for %s %s: %v", method, url, err))
 	}
@@ -502,13 +514,19 @@ func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Resp
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to send request for %s %s: %v", method, url, err))
 	}
+
+	parsedResp.SetStatus(resp.StatusCode)
+
+	if respStream, ok := parsedResp.(ResponseStream); ok {
+		return respStream.HandleBody(resp.Body)
+	}
+
 	defer resp.Body.Close()
 	var jsonBytes []byte
 	if jsonBytes, err = ioutil.ReadAll(resp.Body); err != nil {
 		return errors.New(fmt.Sprintf("Failed to read response for %s %s: %v", method, url, err))
 	}
 
-	parsedResp.SetStatus(resp.StatusCode)
 	parser := parsedResp.GetCustomParser()
 	if parser == nil {
 		if err = json.Unmarshal(jsonBytes, parsedResp); err != nil {
