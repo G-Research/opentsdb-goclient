@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sort"
 	"strconv"
 )
@@ -339,17 +338,26 @@ func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {
 		return fmt.Errorf("unexpected response format: %T(%v)", t, t)
 	}
 
-	if delim == '{' {
+	if delim == '{' { // An error
 		defer body.Close()
-		b, err := ioutil.ReadAll(dec.Buffered())
-		if err != nil {
-			return err
+		for dec.More() {
+			t, err := dec.Token()
+			if err != nil {
+				return err
+			}
+			if delim, ok := t.(string); ok && delim == "error" {
+				qerr := make(QueryError)
+				err := dec.Decode(&qerr)
+				if err != nil {
+					return err
+				}
+				return qerr
+			}
 		}
-		qerr := make(QueryError)
-		json.Unmarshal(append([]byte{byte(delim)}, b...), &qerr)
-		return qerr
+		return errors.New("no 'error' present in response")
 	}
 
+	// Results list, run in goroutine
 	go func() {
 		defer body.Close()
 
