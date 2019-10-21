@@ -150,14 +150,25 @@ type Filter struct {
 	GroupBy bool `json:"groupBy"`
 }
 
+// QueryError is the OpenTSDB error reply. Fields are 'code', 'message', etc.
+type QueryError map[string]interface{}
+
+func (qe QueryError) Error() string {
+	msg, ok := qe["message"].(string)
+	if !ok {
+		return fmt.Sprintf("QueryError: %#v", qe)
+	}
+	return msg
+}
+
 // QueryResponse acts as the implementation of Response in the /api/query scene.
 // It holds the status code and the response values defined in the
 // (http://opentsdb.net/docs/build/html/api_http/query/index.html).
 //
 type QueryResponse struct {
 	StatusCode    int
-	QueryRespCnts []QueryRespItem        `json:"queryRespCnts"`
-	ErrorMsg      map[string]interface{} `json:"error"`
+	QueryRespCnts []QueryRespItem `json:"queryRespCnts"`
+	ErrorMsg      QueryError      `json:"error"`
 }
 
 func (queryResp *QueryResponse) String() string {
@@ -334,10 +345,9 @@ func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {
 		if err != nil {
 			return err
 		}
-		// XXX: Make a QueryError
-		var m interface{}
-		json.Unmarshal(append([]byte{byte(delim)}, b...), &m)
-		return errors.New("query error")
+		qerr := make(QueryError)
+		json.Unmarshal(append([]byte{byte(delim)}, b...), &qerr)
+		return qerr
 	}
 
 	go func() {
