@@ -325,7 +325,7 @@ func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {
 	}
 	delim, ok := t.(json.Delim)
 	if !ok || delim != '{' || delim != '[' {
-		return errors.New("unexpected response format")
+		return fmt.Errorf("unexpected response format: %T(%v)", t, t)
 	}
 
 	if delim == '{' {
