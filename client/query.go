@@ -294,17 +294,12 @@ func (c *clientImpl) QueryStream(param QueryParam, outCh chan<- *QueryRespItem) 
 		close(outCh)
 		return err
 	}
-	if queryStreamResp.err != nil {
-		close(outCh)
-		return queryStreamResp.err
-	}
 	return nil
 }
 
 type QueryStreamResponse struct {
 	outCh chan<- *QueryRespItem
 	statusCode int
-	err error
 }
 
 func (qs *QueryStreamResponse) GetCustomParser() func(respCnt []byte) error {
@@ -320,33 +315,29 @@ func (qs *QueryStreamResponse) String() string {
 	return "[unused]"
 }
 
-func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) {
+func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {
 	dec := json.NewDecoder(body)
 	// look at first token, we want a '[' (results) or a '{' (error).
 	t, err := dec.Token()
 	if err != nil {
-		qs.err = err
 		body.Close()
-		return
+		return err
 	}
 	delim, ok := t.(json.Delim)
 	if !ok || delim != '{' || delim != '[' {
-		qs.err = errors.New("unexpected response format")
-		body.Close()
-		return
+		return errors.New("unexpected response format")
 	}
 
 	if delim == '{' {
 		defer body.Close()
 		b, err := ioutil.ReadAll(dec.Buffered())
 		if err != nil {
-			qs.err = err
+			return err
 		}
 		// XXX: Make a QueryError
 		var m interface{}
 		json.Unmarshal(append([]byte{byte(delim)}, b...), &m)
-		qs.err = errors.New("query error")
-		return
+		return errors.New("query error")
 	}
 
 	go func() {
@@ -362,6 +353,8 @@ func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) {
 		}
 		close(qs.outCh)
 	}()
+
+	return nil
 }
 
 func prepQuery(param QueryParam) (string, error) {
