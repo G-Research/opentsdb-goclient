@@ -488,9 +488,9 @@ type ResponseStream interface {
 
 	Response
 
-	// HandleBody is given the response.Body. It must call Close on the Reader
+	// HandleBody is given the response.Body. It must call Close on the ReadCloser
 	// when finished (which can be after the method returns).
-	HandleBody(io.Reader) error
+	HandleBody(io.ReadCloser) error
 }
 
 func (c *clientImpl) WithContext(ctx context.Context) Client {
