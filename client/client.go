@@ -530,7 +530,7 @@ func (c *clientImpl) sendRequest(method, url, reqBodyCnt string, parsedResp Resp
 	case Response:
 		return HandleResponseBody(r, method, url, resp.Body)
 	default:
-		return fmt.Errorf("Unhandled type: %T",  r)
+		return fmt.Errorf("Unhandled type: %T", r)
 	}
 }
 
