@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
 	"strconv"
 )
 
@@ -219,11 +218,9 @@ type QueryRespItem struct {
 	// By default the timestamps will be in seconds. If the msResolution flag is set, then the
 	// timestamps will be in milliseconds.
 	//
-	// Because the elements of map is out of order, using common way to iterate Dps will not get
-	// datapoints with timestamps out of order.
-	// So be aware that one should use '(qri *QueryRespItem) GetDataPoints() []*DataPoint' to
-	// acquire the real ascending datapoints.
-	Dps map[string]interface{} `json:"dps"`
+	// Use '(qri *QueryRespItem) GetDataPoints() []*DataPoint' to acquire the real
+	// ascending datapoints.
+	Dps DataPoints `json:"dps"`
 
 	// If the query retrieved annotations for timeseries over the requested timespan, they will
 	// be returned in this group. Annotations for every timeseries will be merged into one set
@@ -243,41 +240,80 @@ type QueryRespItem struct {
 
 // GetDataPoints returns the real ascending datapoints from the information of the related QueryRespItem.
 func (qri *QueryRespItem) GetDataPoints() []*DataPoint {
-	datapoints := make([]*DataPoint, len(qri.Dps))
-	i := 0
-	for timestampStr, v := range qri.Dps {
-		timestamp, _ := strconv.ParseInt(timestampStr, 10, 64)
-		datapoints[i] = &DataPoint{
-			Metric:    qri.Metric,
-			Value:     v,
-			Tags:      qri.Tags,
-			Timestamp: timestamp,
-		}
-		i++
-	}
-	sort.Sort(DataPointByTimestamp(datapoints))
-	return datapoints
+	return qri.Dps.dps
 }
 
 // GetLatestDataPoint returns latest datapoint for the related QueryRespItem instance.
 func (qri *QueryRespItem) GetLatestDataPoint() *DataPoint {
-	timestampStrs := make([]string, len(qri.Dps))
-	for timestampStr := range qri.Dps {
-		timestampStrs = append(timestampStrs, timestampStr)
+	return qri.Dps.dps[len(qri.Dps.dps)-1]
+}
+
+type DataPoints struct {
+	dps []*DataPoint
+}
+
+func (dps *DataPoints) UnmarshalJSON(json []byte) error {
+	// We expect to see a map of "time": value, we simply hand roll a parser for
+	// the most speed as this does not need to handle general JSON.
+	var ts int64
+	var dp float64
+	var inDict, seenDP, seenTS bool
+	fmt.Printf("unmarhsal %v\n", string(json))
+	for i := 0; i < len(json); i++ {
+		fmt.Printf("%c\n", json[i])
+		switch json[i] {
+			case '{': inDict = true
+			case ' ', '\t', '\r', '\n': // skip whitespace
+			case '"':
+				// key
+				start := i+1
+				j := start
+				for ; j < len(json); j++ {
+					if json[j] == '"' {
+						break
+					}
+				}
+				i = j
+				var err error
+				ts, err = strconv.ParseInt(string(json[start:j]), 10, 64)
+				seenTS = err == nil
+				fmt.Printf("key %v %v\n", ts, err)
+			case ':': // ignore
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
+				// value
+				start := i
+				j := start
+				for ; j < len(json); j++ {
+					if json[j] == ',' || json[j] == '}' {
+						break
+					}
+				}
+				i = j-1
+				var err error
+				dp, err = strconv.ParseFloat(string(json[start:j]), 10)
+				seenDP = err == nil
+				fmt.Printf("value %v %v\n", dp, err)
+			case ',', '}': // end of item, add to list
+			  if !seenTS || !seenDP {
+					return errors.New("Missing ts or dp")
+				}
+			  dps.dps = append(dps.dps, &DataPoint{
+					Timestamp: ts,
+					Value: dp,
+				})
+				fmt.Printf("append\n")
+				seenTS = false
+				seenDP = false
+			default:
+				return fmt.Errorf("unexpected char '%c' in dps", json[i])
+		}
 	}
-	sort.Strings(timestampStrs)
-	size := len(timestampStrs)
-	if size == 0 {
-		return nil
+
+	if !inDict {
+		return errors.New("no JSON object found")
 	}
-	timestamp, _ := strconv.ParseInt(timestampStrs[size-1], 10, 64)
-	datapoint := &DataPoint{
-		Metric:    qri.Metric,
-		Value:     qri.Dps[timestampStrs[size-1]],
-		Tags:      qri.Tags,
-		Timestamp: timestamp,
-	}
-	return datapoint
+
+	return nil
 }
 
 func (c *clientImpl) Query(param QueryParam) (*QueryResponse, error) {
@@ -336,7 +372,7 @@ func (qs *QueryStreamResponse) HandleBody(body io.ReadCloser) error {
 			if err != nil {
 				return err
 			}
-			if delim, ok := t.(string); ok && delim == "error" {
+			if key, ok := t.(string); ok && key == "error" {
 				qerr := make(QueryError)
 				err := dec.Decode(&qerr)
 				if err != nil {
