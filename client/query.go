@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 )
 
@@ -240,24 +241,36 @@ type QueryRespItem struct {
 
 // GetDataPoints returns the real ascending datapoints from the information of the related QueryRespItem.
 func (qri *QueryRespItem) GetDataPoints() []*DataPoint {
+	if !qri.Dps.sorted {
+		sort.Sort(DataPointByTimestamp(qri.Dps.dps))
+		qri.Dps.sorted = true
+	}
 	return qri.Dps.dps
 }
 
 // GetLatestDataPoint returns latest datapoint for the related QueryRespItem instance.
 func (qri *QueryRespItem) GetLatestDataPoint() *DataPoint {
+	if !qri.Dps.sorted {
+		sort.Sort(DataPointByTimestamp(qri.Dps.dps))
+		qri.Dps.sorted = true
+	}
 	return qri.Dps.dps[len(qri.Dps.dps)-1]
 }
 
 type DataPoints struct {
 	dps []*DataPoint
+	sorted bool
 }
 
 func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 	// We expect to see a map of "time": value, we simply hand roll a parser for
 	// the most speed as this does not need to handle general JSON.
-	var ts int64
+	var ts, lastTS int64
 	var dp float64
 	var inDict, seenDP, seenTS bool
+	// If the keys are sorted, remember that, to avoid an extra sort on already
+	// sorted data.
+	dps.sorted = true
 	for i := 0; i < len(json); i++ {
 		switch json[i] {
 			case '{': inDict = true
@@ -274,6 +287,10 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 				i = j
 				var err error
 				ts, err = strconv.ParseInt(string(json[start:j]), 10, 64)
+				if ts < lastTS {
+					dps.sorted = false
+				}
+				lastTS = ts
 				seenTS = err == nil
 			case ':': // ignore
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':

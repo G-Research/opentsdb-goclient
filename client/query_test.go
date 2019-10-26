@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"encoding/json"
   "testing"
 )
@@ -13,5 +12,14 @@ func TestDataPoints(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	fmt.Print(qri.Dps.dps)
+	if !qri.Dps.sorted {
+		t.Error("not detected as sorted")
+	}
+	dps := qri.GetDataPoints()
+	if len(dps) != 73 {
+		t.Errorf("got %d items, want 73", len(dps))
+	}
+	if dps[0].Timestamp != 1572092230000 || dps[0].Value.(float64) != 25791430000 {
+		t.Errorf("data not as expected, got %v, want 1572092230000: 25791430000", dps[0])
+	}
 }
