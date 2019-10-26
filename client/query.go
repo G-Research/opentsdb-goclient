@@ -258,9 +258,7 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 	var ts int64
 	var dp float64
 	var inDict, seenDP, seenTS bool
-	fmt.Printf("unmarhsal %v\n", string(json))
 	for i := 0; i < len(json); i++ {
-		fmt.Printf("%c\n", json[i])
 		switch json[i] {
 			case '{': inDict = true
 			case ' ', '\t', '\r', '\n': // skip whitespace
@@ -277,7 +275,6 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 				var err error
 				ts, err = strconv.ParseInt(string(json[start:j]), 10, 64)
 				seenTS = err == nil
-				fmt.Printf("key %v %v\n", ts, err)
 			case ':': // ignore
 			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
 				// value
@@ -292,7 +289,6 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 				var err error
 				dp, err = strconv.ParseFloat(string(json[start:j]), 10)
 				seenDP = err == nil
-				fmt.Printf("value %v %v\n", dp, err)
 			case ',', '}': // end of item, add to list
 			  if !seenTS || !seenDP {
 					return errors.New("Missing ts or dp")
@@ -301,7 +297,6 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 					Timestamp: ts,
 					Value: dp,
 				})
-				fmt.Printf("append\n")
 				seenTS = false
 				seenDP = false
 			default:
