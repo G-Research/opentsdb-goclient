@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"strconv"
 )
@@ -263,17 +264,17 @@ type DataPoints struct {
 }
 
 func (dps *DataPoints) UnmarshalJSON(json []byte) error {
-	// We expect to see a map of "time": value, we simply hand roll a parser for
+	// We expect to see an object of "time": value, we simply hand roll a parser for
 	// the most speed as this does not need to handle general JSON.
 	var ts, lastTS int64
 	var dp float64
-	var inDict, seenDP, seenTS bool
+	var inObject, seenDP, seenTS bool
 	// If the keys are sorted, remember that, to avoid an extra sort on already
 	// sorted data.
 	dps.sorted = true
 	for i := 0; i < len(json); i++ {
 		switch json[i] {
-			case '{': inDict = true
+			case '{': inObject = true
 			case ' ', '\t', '\r', '\n': // skip whitespace
 			case '"':
 				// key
@@ -293,7 +294,7 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 				lastTS = ts
 				seenTS = err == nil
 			case ':': // ignore
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.':
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', 'n':
 				// value
 				start := i
 				j := start
@@ -304,7 +305,12 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 				}
 				i = j-1
 				var err error
-				dp, err = strconv.ParseFloat(string(json[start:j]), 10)
+				s := string(json[start:j])
+				if s == "null" {
+					dp = math.NaN()
+				} else {
+					dp, err = strconv.ParseFloat(s, 10)
+				}
 				seenDP = err == nil
 			case ',', '}': // end of item, add to list
 			  if !seenTS || !seenDP {
@@ -321,7 +327,7 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 		}
 	}
 
-	if !inDict {
+	if !inObject {
 		return errors.New("no JSON object found")
 	}
 
