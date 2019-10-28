@@ -259,7 +259,7 @@ func (qri *QueryRespItem) GetLatestDataPoint() *DataPoint {
 }
 
 type DataPoints struct {
-	dps []*DataPoint
+	dps    []*DataPoint
 	sorted bool
 }
 
@@ -274,56 +274,57 @@ func (dps *DataPoints) UnmarshalJSON(json []byte) error {
 	dps.sorted = true
 	for i := 0; i < len(json); i++ {
 		switch json[i] {
-			case '{': inObject = true
-			case ' ', '\t', '\r', '\n': // skip whitespace
-			case '"':
-				// key
-				start := i+1
-				j := start
-				for ; j < len(json); j++ {
-					if json[j] == '"' {
-						break
-					}
+		case '{':
+			inObject = true
+		case ' ', '\t', '\r', '\n': // skip whitespace
+		case '"':
+			// key
+			start := i + 1
+			j := start
+			for ; j < len(json); j++ {
+				if json[j] == '"' {
+					break
 				}
-				i = j
-				var err error
-				ts, err = strconv.ParseInt(string(json[start:j]), 10, 64)
-				if ts < lastTS {
-					dps.sorted = false
+			}
+			i = j
+			var err error
+			ts, err = strconv.ParseInt(string(json[start:j]), 10, 64)
+			if ts < lastTS {
+				dps.sorted = false
+			}
+			lastTS = ts
+			seenTS = err == nil
+		case ':': // ignore
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', 'n':
+			// value
+			start := i
+			j := start
+			for ; j < len(json); j++ {
+				if json[j] == ',' || json[j] == '}' {
+					break
 				}
-				lastTS = ts
-				seenTS = err == nil
-			case ':': // ignore
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.', 'n':
-				// value
-				start := i
-				j := start
-				for ; j < len(json); j++ {
-					if json[j] == ',' || json[j] == '}' {
-						break
-					}
-				}
-				i = j-1
-				var err error
-				s := string(json[start:j])
-				if s == "null" {
-					dp = math.NaN()
-				} else {
-					dp, err = strconv.ParseFloat(s, 10)
-				}
-				seenDP = err == nil
-			case ',', '}': // end of item, add to list
-			  if !seenTS || !seenDP {
-					return errors.New("Missing ts or dp")
-				}
-			  dps.dps = append(dps.dps, &DataPoint{
-					Timestamp: ts,
-					Value: dp,
-				})
-				seenTS = false
-				seenDP = false
-			default:
-				return fmt.Errorf("unexpected char '%c' in dps", json[i])
+			}
+			i = j - 1
+			var err error
+			s := string(json[start:j])
+			if s == "null" {
+				dp = math.NaN()
+			} else {
+				dp, err = strconv.ParseFloat(s, 10)
+			}
+			seenDP = err == nil
+		case ',', '}': // end of item, add to list
+			if !seenTS || !seenDP {
+				return errors.New("Missing ts or dp")
+			}
+			dps.dps = append(dps.dps, &DataPoint{
+				Timestamp: ts,
+				Value:     dp,
+			})
+			seenTS = false
+			seenDP = false
+		default:
+			return fmt.Errorf("unexpected char '%c' in dps", json[i])
 		}
 	}
 

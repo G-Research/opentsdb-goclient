@@ -3,7 +3,7 @@ package client
 import (
 	"encoding/json"
 	"math"
-  "testing"
+	"testing"
 )
 
 func TestDataPoints(t *testing.T) {
