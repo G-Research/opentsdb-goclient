@@ -241,6 +241,9 @@ type QueryRespItem struct {
 	// The value is optional.
 	GlobalAnnotations []Annotation `json:"globalAnnotations,omitempty"`
 
+	// The query that this result is in relation to.
+	Query SubQuery `json:"query"`
+
 	// If an error occurred (only used for QueryStream, if the data is malformed while parsing).
 	Error error
 }
