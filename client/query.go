@@ -71,6 +71,11 @@ type QueryParam struct {
 	// If multiple time series were aggregated into one set, multiple TSUIDs will be returned in a sorted manner.
 	ShowTSUIDs bool `json:"showTSUIDs,omitempty"`
 
+	// An optional value is used to show whether or not to return the original sub query with the query results.
+	// If the request contains many sub queries then this is a good way to determine which results belong to which sub query.
+	// Note that in the case of a * or wildcard query, this can produce a lot of duplicate output.
+	ShowQuery bool `json:"showQuery,omitempty"`
+
 	// An optional value is used to show whether or not can be paased to the JSON with a POST to delete any data point
 	// that match the given query.
 	Delete bool `json:"delete,omitempty"`
